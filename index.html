@@ -471,7 +471,7 @@ function fmt(n){n=Math.max(0,Math.round(n));
   if(n>=1e6)return '$'+(n/1e6).toFixed(n>=1e7?1:2).replace(/\.0+$/,'')+'M';
   if(n>=1e3)return '$'+Math.round(n/1e3)+'K';
   return '$'+n.toLocaleString();}
-function fmtRange(v){const sp=S.A.rangeSpread/100;return fmt(v*(1-sp))+' – '+fmt(v*(1+sp));}
+function fmtRange(v){if(v<=0)return '$0';const sp=S.A.rangeSpread/100;return fmt(v*(1-sp))+' – '+fmt(v*(1+sp));}
 function bandInterp(v,m){if(v<=30)return lerp(0,m[0],v/30);if(v<=60)return lerp(m[0],m[1],(v-30)/30);return lerp(m[1],m[2],(v-60)/40);}
 function quadrant(x,y){return (y>=0.5?'T':'B')+(x>=0.5?'R':'L');}
 
@@ -518,6 +518,17 @@ function compute(){
   };
   const contrib={D:cats.D.norm,R:cats.R.norm,I:cats.I.norm,F:cats.F.norm,T:cats.T.norm,S:sAnnual};
   return {annualPayroll,sprintCost,sprintsPerYear,headcount,cats,internalRaw,internalNorm,overflow,rawSum,sAnnual,q,sev,contrib,misRate,tBoth};
+}
+
+// Best-achievable baseline: all levers at their best, for the CURRENT team config.
+// Used to express the headline as a "recoverable" cost of inaction (current − baseline),
+// so a fully-optimized team reads ~$0 while the realistic floors stay in the model.
+function computeBaseline(){
+  const save={d:S.d,r1:S.r1,r2:S.r2,i1:S.i1,i2:S.i2,f:S.f,tDebt:S.tDebt,tInc:S.tInc,sx:S.sx,sy:S.sy};
+  S.d=1;S.r1=1;S.r2=1;S.i1=1;S.i2=1;S.f={road:'High',mid:'Rare',pri:'Stable'};S.tDebt=0;S.tInc=0;S.sx=1;S.sy=1;
+  const B=compute();
+  Object.assign(S,save);
+  return B;
 }
 
 const SNAP={
@@ -796,6 +807,18 @@ function renderAssump(){
 /* ---------- refresh ---------- */
 function refresh(rebuildControls){
   const R=compute(); R.A_dBlocked=S.A.dBlocked;
+  // Recoverable cost of inaction: subtract the best-achievable baseline for this team
+  // config so a fully-optimized team reads ~$0 and every figure reflects only what's
+  // actually fixable. Radar severity (R.sev) is left as-is — it shows current state.
+  const _B=computeBaseline();
+  for(const k of ['D','R','I','F','T']){
+    R.cats[k].raw=Math.max(0,R.cats[k].raw-_B.cats[k].raw);
+    R.cats[k].norm=Math.max(0,R.cats[k].norm-_B.cats[k].norm);
+  }
+  R.internalNorm=Math.max(0,R.internalNorm-_B.internalNorm);
+  R.internalRaw=Math.max(0,R.internalRaw-_B.internalRaw);
+  R.sAnnual=Math.max(0,R.sAnnual-_B.sAnnual);
+  R.contrib={D:R.cats.D.norm,R:R.cats.R.norm,I:R.cats.I.norm,F:R.cats.F.norm,T:R.cats.T.norm,S:R.sAnnual};
   // rebuild controls FIRST so the per-category cost spans exist before we fill them
   if(rebuildControls){renderCats();renderRoles();syncTopInputs();renderAssump();}
   renderHero(R); renderRadar(R); renderLedger(R); renderNarrative(R); renderNudges(R);
