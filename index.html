@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRIFTS Calculator — The Cost of Inaction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens (matched to portfolio) ── */
+:root{
+  --bg:#f7f5f0; --surface:#ffffff; --surface-2:#f1eee7;
+  --text:#1a1a18; --text-muted:#6b6b65; --border:#e2dfd8;
+  --accent:#1a1a18; --accent-warm:#3d5c45; --accent-warm-soft:rgba(61,92,69,.10);
+  --danger:#a8472f; --danger-soft:rgba(168,71,47,.10);
+  --gold:#9a7b2e; --gold-soft:rgba(154,123,46,.12);
+  --font-display:'Raleway',system-ui,sans-serif;
+  --font-body:'Nunito',system-ui,sans-serif;
+  --radius:4px;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.05);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.06),0 18px 48px rgba(0,0,0,.08);
+}
+[data-theme="dark"]{
+  --bg:#141412; --surface:#1c1c1a; --surface-2:#232320;
+  --text:#edebe6; --text-muted:#8f8d84; --border:#2e2d2a;
+  --accent:#edebe6; --accent-warm:#5e8a70; --accent-warm-soft:rgba(94,138,112,.14);
+  --danger:#d97a5e; --danger-soft:rgba(217,122,94,.14);
+  --gold:#cba94f; --gold-soft:rgba(203,169,79,.16);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.4),0 18px 48px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--font-body);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease;
+}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:400;line-height:1.15}
+.mono-label{font-size:.68rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-warm)}
+button{font-family:var(--font-body);cursor:pointer}
+a{color:inherit}
+
+/* ── Header ── */
+header{
+  position:sticky;top:0;z-index:50;background:var(--bg);
+  border-bottom:1px solid var(--border);transition:background-color .3s ease;
+}
+.nav{max-width:1280px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;flex-direction:column;line-height:1.1}
+.brand .name{font-family:var(--font-display);font-size:1.1rem;letter-spacing:.03em}
+.brand .sub{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-top:2px}
+.nav-actions{display:flex;align-items:center;gap:10px}
+.ghost-btn{
+  background:transparent;border:1px solid var(--border);color:var(--text-muted);
+  border-radius:var(--radius);padding:.45rem .8rem;font-size:.72rem;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;transition:.18s ease;
+}
+.ghost-btn:hover{border-color:var(--text-muted);color:var(--text)}
+#theme-toggle,#settings-toggle{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0}
+#sun{display:none}[data-theme="dark"] #moon{display:none}[data-theme="dark"] #sun{display:block}
+
+/* ── Layout ── */
+.wrap{max-width:1280px;margin:0 auto;padding:24px 24px 80px}
+.intro{max-width:760px;margin-bottom:16px}
+.intro h1{font-size:clamp(1.4rem,2.6vw,1.9rem);margin-bottom:.25rem}
+.intro p{color:var(--text-muted);font-size:.92rem}
+.layout{display:grid;grid-template-columns:minmax(0,1.35fr) 360px;gap:20px;align-items:start}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+
+.panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;margin-bottom:14px;
+}
+.panel > h2{font-size:1.1rem;margin-bottom:.2rem}
+.panel > .desc{color:var(--text-muted);font-size:.84rem;margin-bottom:16px}
+
+/* ── Focal column ── */
+.stage{position:sticky;top:78px}
+@media(max-width:980px){.stage{position:static}}
+
+.hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:18px;box-shadow:var(--shadow-lg)}
+.hero-main{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:center}
+@media(max-width:560px){.hero-main{grid-template-columns:1fr;gap:6px}}
+.radar-col{display:flex;flex-direction:column;align-items:center}
+.radar-legend{display:flex;flex-wrap:wrap;gap:5px 14px;justify-content:center;font-size:.66rem;color:var(--text-muted);margin-bottom:4px}
+.radar-legend span{display:inline-flex;align-items:center;gap:5px}
+.swatch{width:18px;height:3px;border-radius:2px;display:inline-block}
+.radar-wrap{display:flex;justify-content:center}
+
+.cost-col .eyebrow{font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.cost-col .big{font-family:var(--font-display);font-size:clamp(2.1rem,5vw,3.1rem);font-weight:500;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
+.cost-col .big-sub{font-size:.8rem;color:var(--text-muted);margin-top:5px}
+.sline{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.sline .lbl{font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px}
+.sline .num{font-family:var(--font-display);font-size:1.45rem;font-weight:500;color:var(--accent-warm);font-variant-numeric:tabular-nums}
+.sline.s-hot .num{color:var(--danger)}
+.sline .num-sub{font-size:.74rem;color:var(--text-muted);margin-top:3px}
+
+.leverage{background:var(--accent-warm-soft);border-left:3px solid var(--accent-warm);padding:11px 14px;border-radius:0 var(--radius) var(--radius) 0;font-size:.84rem;margin-top:18px}
+.leverage b{color:var(--text);font-weight:700}
+
+.overflow-note{background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);border-radius:var(--radius);padding:10px 12px;font-size:.78rem;margin:14px 0 0;line-height:1.4}
+
+/* in-hero collapsible breakdown */
+.hero-breakdown{margin-top:6px;border-top:1px solid var(--border)}
+.bd-head{padding:12px 0 2px}
+.bd-title{font-family:var(--font-display);font-size:1.02rem;color:var(--text)}
+.hero-breakdown.open .c-body{margin-top:0}
+.hero-breakdown .ledger-row:first-child{border-top:none}
+
+/* ledger */
+.ledger-row{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}
+.ledger-row .ll{width:26px;height:26px;border-radius:6px;background:var(--accent-warm-soft);color:var(--accent-warm);font-family:var(--font-display);font-weight:600;font-size:.92rem;display:flex;align-items:center;justify-content:center}
+.ledger-row .lname{font-size:.82rem}
+.ledger-row .lname small{display:block;color:var(--text-muted);font-size:.68rem}
+.ledger-row .lcost{text-align:right}
+.ledger-row .lcost .raw{font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums}
+.ledger-row .lcost .norm{font-size:.68rem;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.ledger-sep{padding:10px 0;border-top:2px solid var(--border);margin-top:4px}
+.narrative{font-size:.86rem;line-height:1.6;color:var(--text-muted)}
+.narrative p{margin-bottom:10px}.narrative p:last-child{margin-bottom:0}
+
+/* ── Nudges (eye-catching) ── */
+#nudges{margin-bottom:18px}
+#nudges:empty{display:none}
+@keyframes nudgeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 var(--gold-soft)}50%{box-shadow:0 0 0 6px var(--gold-soft)}}
+.nudge{border-radius:var(--radius);padding:14px 15px;margin-bottom:10px;font-size:.84rem;line-height:1.45;border:1px solid var(--border);background:var(--surface);animation:nudgeIn .28s ease both}
+.nudge.t1{border:1.5px solid var(--gold);background:var(--gold-soft);box-shadow:var(--shadow);position:relative;overflow:hidden}
+.nudge.t1::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.nudge .nh{display:flex;align-items:center;gap:7px;font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.nudge.t2 .nh{color:var(--text-muted)}
+.nudge .nicon{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center}
+.nudge.t1 .nicon{animation:glowPulse 2s ease-in-out infinite;border-radius:50%}
+.nudge .nbody{color:var(--text)}
+.nudge .nbody b{font-weight:700}
+.nudge .nact{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.nudge .nact button{font-size:.72rem;font-weight:600;letter-spacing:.03em;padding:.42rem .85rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);transition:.15s}
+.nudge .nact .apply{background:var(--accent-warm);border-color:var(--accent-warm);color:#fff}
+.nudge .nact .apply:hover{opacity:.85}
+.nudge .nact .dismiss:hover{border-color:var(--text-muted)}
+
+/* ── Collapsible config panels ── */
+.collapsible .c-body{display:none}
+.collapsible.open .c-body{display:block;margin-top:16px}
+.c-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;gap:12px}
+.c-head h2{font-size:1.08rem;margin:0}
+.c-summary{font-size:.78rem;color:var(--text-muted);margin-top:3px}
+.chev{transition:transform .2s ease;color:var(--text-muted);flex-shrink:0}
+.collapsible.open .chev{transform:rotate(180deg)}
+
+/* team setup */
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:380px){.field-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);line-height:1.3;min-height:2.8em;display:flex;align-items:flex-start}
+select,input[type=number]{
+  width:100%;padding:.55rem .7rem;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);border-radius:var(--radius);font-family:var(--font-body);font-size:.9rem;
+  -webkit-appearance:none;appearance:none;transition:border-color .18s ease;
+}
+select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b65' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right .65rem center;padding-right:1.8rem}
+select:focus,input:focus{outline:2px solid var(--accent-warm);outline-offset:0;border-color:var(--accent-warm)}
+.roles{margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
+.roles-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.roles-head .mono-label{color:var(--text-muted)}
+.role-row{display:grid;grid-template-columns:22px 1.3fr 60px 1fr;gap:9px;align-items:center;padding:5px 0}
+.role-row + .role-row{border-top:1px solid var(--border)}
+.role-row.off{opacity:.4}
+.role-row .rname{font-size:.84rem;font-weight:500}
+.role-row input{padding:.4rem .5rem;font-size:.8rem}
+.chk{width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s}
+.chk.on{background:var(--accent-warm);border-color:var(--accent-warm)}
+.chk svg{opacity:0;color:#fff}.chk.on svg{opacity:1}
+.role-totals{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:.78rem;color:var(--text-muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.role-totals b{color:var(--text);font-weight:600}
+
+/* category cards */
+.cat{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:7px;overflow:hidden;background:var(--surface)}
+.cat-head{display:flex;align-items:center;gap:11px;padding:8px 13px;cursor:pointer;user-select:none}
+.cat-letter{width:25px;height:25px;border-radius:6px;background:var(--accent-warm-soft);color:var(--accent-warm);font-family:var(--font-display);font-size:.92rem;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cat-title{flex:1;min-width:0}
+.cat-title .t{font-family:var(--font-display);font-size:.92rem}
+.cat-sub{font-size:.74rem;color:var(--text-muted);margin:8px 0 0;line-height:1.35}
+.cat-chev{transition:transform .2s ease;color:var(--text-muted);flex-shrink:0}
+.cat.open .cat-chev{transform:rotate(180deg)}
+.cat-body{display:none;padding:2px 13px 14px;border-top:1px solid var(--border)}
+.cat.open .cat-body{display:block}
+.lever{margin-top:16px}
+.lever-label{display:flex;justify-content:space-between;font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+.lever-label .pos{color:var(--accent-warm)}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;background:var(--border);outline:none;margin:6px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent-warm);border:3px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent-warm);border:3px solid var(--surface);cursor:pointer}
+.snapshot{font-size:.8rem;color:var(--text-muted);font-style:italic;margin-top:8px;min-height:2.4em;line-height:1.35}
+.seg-dim{margin-top:16px}
+.seg-dim .dlabel{font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.seg button{padding:.5rem .3rem;font-size:.78rem;font-weight:500;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);transition:.15s}
+.seg button.on{background:var(--accent-warm);border-color:var(--accent-warm);color:#fff;font-weight:600}
+
+/* R — stepper with plain solid segment bars */
+.stepper{display:flex;align-items:center;gap:10px;margin-top:8px}
+.step-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:1.3rem;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.step-btn:hover:not(:disabled){border-color:var(--accent-warm);color:var(--accent-warm)}
+.step-btn:active:not(:disabled){transform:scale(.94)}
+.step-btn:disabled{opacity:.3;cursor:default}
+.step-segs{flex:1;display:flex;gap:5px}
+.step-seg{flex:1;height:20px;border-radius:4px;border:1px solid var(--border);background:var(--bg);cursor:pointer;padding:0;transition:.12s}
+.step-seg:hover{border-color:var(--accent)}
+.step-seg.on{background:var(--accent);border-color:var(--accent)}
+
+/* I — light-bank bulbs (green→red gradient, cumulative) */
+.bulbbank{display:flex;gap:8px;margin-top:8px}
+.bulb{flex:1;height:44px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:.18s;padding:0}
+.bulb svg{width:22px;height:22px}
+.bulb:hover{border-color:var(--bulb)}
+.bulb.on{color:var(--bulb);border-color:var(--bulb);box-shadow:0 0 10px -3px var(--bulb)}
+.bulb.on svg{fill:currentColor;fill-opacity:.22}
+.tslider-wrap{margin-top:18px}
+.tbar{position:relative;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:linear-gradient(90deg,#4f8f5e 0%,#c9b23f 50%,#bb4a30 100%)}
+.tbar .mask{position:absolute;top:0;right:0;height:100%;background:var(--surface);opacity:.86}
+.tbar input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
+.tval{font-variant-numeric:tabular-nums}
+.xy{position:relative;width:100%;aspect-ratio:1/1;max-width:300px;margin:14px auto 6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);touch-action:none;cursor:crosshair}
+.xy .axis{position:absolute;background:var(--border)}
+.xy .axv{left:50%;top:0;bottom:0;width:1px}.xy .axh{top:50%;left:0;right:0;height:1px}
+.xy .ql{position:absolute;font-size:.62rem;color:var(--text-muted);line-height:1.2;max-width:46%;pointer-events:none}
+.xy .q-tl{top:6px;left:6px}.xy .q-tr{top:6px;right:6px;text-align:right}
+.xy .q-bl{bottom:6px;left:6px}.xy .q-br{bottom:6px;right:6px;text-align:right}
+.xy .dot{position:absolute;width:18px;height:18px;border-radius:50%;background:var(--accent-warm);border:3px solid var(--surface);box-shadow:0 1px 5px rgba(0,0,0,.3);transform:translate(-50%,-50%);pointer-events:none}
+.xy-ax-label{font-size:.64rem;color:var(--text-muted);text-align:center;letter-spacing:.05em;text-transform:uppercase}
+.xy-y-label{writing-mode:vertical-rl;transform:rotate(180deg)}
+.xy-frame{display:grid;grid-template-columns:auto 1fr;grid-template-rows:1fr auto;gap:6px;max-width:340px;margin:0 auto}
+
+/* assumptions rows */
+.agroup{margin-bottom:18px}
+.agroup h4{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-warm);font-family:var(--font-body);font-weight:700;margin-bottom:4px}
+.agroup .ahelp{font-size:.74rem;color:var(--text-muted);margin-bottom:10px;line-height:1.4}
+.arow{display:grid;grid-template-columns:1fr 92px 26px;gap:8px;align-items:center;padding:5px 0}
+.arow label{font-size:.78rem;color:var(--text)}
+.arow input{padding:.35rem .5rem;font-size:.82rem}
+.arow .reset{width:24px;height:24px;border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;padding:0;font-size:.8rem}
+.arow .reset:hover{color:var(--text);border-color:var(--text-muted)}
+.arow.changed input{border-color:var(--accent-warm)}
+.assump-actions{display:flex;gap:10px;margin-top:8px}
+
+/* ── Assumptions modal ── */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+@keyframes modalIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:100%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;animation:modalIn .2s ease}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-head h2{font-size:1.18rem;margin:0}
+.modal-head .c-summary{margin-top:3px}
+.modal-close{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text-muted);font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.modal-close:hover{color:var(--text);border-color:var(--text-muted)}
+.modal-body{padding:20px;overflow-y:auto}
+
+footer{max-width:1280px;margin:0 auto;padding:24px;color:var(--text-muted);font-size:.74rem;text-align:center;line-height:1.6}
+.skip-link{position:absolute;top:-100%;left:0;z-index:999;padding:.5rem 1.25rem;background:var(--text);color:var(--bg);font-size:.85rem}
+.skip-link:focus{top:0}
+</style>
+</head>
+<body>
+<a href="#config" class="skip-link">Skip to settings</a>
+<header>
+  <div class="nav">
+    <div class="brand">
+      <span class="name">DRIFTS</span>
+      <span class="sub">Cost of Inaction Calculator</span>
+    </div>
+    <div class="nav-actions">
+      <button class="ghost-btn" id="reset-all">Reset</button>
+      <button class="ghost-btn" id="settings-toggle" aria-label="Settings" title="Settings">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="ghost-btn" id="theme-toggle" aria-label="Toggle theme">
+        <svg id="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="intro">
+    <h1>What is inaction costing you?</h1>
+    <p>Inaction feels free. It isn't. Move the levers, set your team, and watch the shape — and the number — change in real time.</p>
+  </div>
+
+  <div class="layout">
+    <!-- ───────── LEFT: the stage (spider + cost + insights) ───────── -->
+    <div class="focal">
+      <div class="stage">
+        <div id="nudges"></div>
+
+        <div class="hero">
+          <div class="hero-main">
+            <div class="radar-col">
+              <div class="radar-legend">
+                <span><i class="swatch" style="background:var(--accent-warm)"></i>Your team</span>
+                <span><i class="swatch" style="background:var(--text-muted);opacity:.45"></i>Decision-drag ceiling</span>
+              </div>
+              <div class="radar-wrap" id="radar"></div>
+            </div>
+            <div class="cost-col">
+              <div class="eyebrow">Estimated annual cost of inaction</div>
+              <div class="big" id="hero-internal">$0</div>
+              <div class="big-sub">in internal team capacity — payroll-bounded</div>
+              <div class="sline" id="sline">
+                <div class="lbl">＋ Time lost building the wrong things</div>
+                <div class="num" id="hero-s">$0</div>
+                <div class="num-sub">slow-feedback cost — market time, reported separately</div>
+              </div>
+            </div>
+          </div>
+          <div class="leverage" id="leverage"></div>
+          <div id="overflow-slot"></div>
+          <div class="hero-breakdown collapsible" id="breakdown">
+            <div class="c-head bd-head" id="breakdown-toggle">
+              <span class="bd-title">DRIFTS breakdown</span>
+              <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="c-body"><div class="ledger" id="ledger"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 style="font-size:1.05rem;margin-bottom:14px">What this means</h2>
+        <div class="narrative" id="narrative"></div>
+      </div>
+    </div>
+
+    <!-- ───────── RIGHT: settings & inputs (collapsible) ───────── -->
+    <div class="config" id="config">
+      <div class="panel collapsible" id="team-panel">
+        <div class="c-head" id="team-toggle">
+          <div><h2>Your team</h2><div class="c-summary" id="team-summary"></div></div>
+          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="c-body">
+          <p class="desc">Company stage sets smart defaults. Everything is editable.</p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="stage">Company stage</label>
+              <select id="stage">
+                <option value="startup">Startup</option>
+                <option value="growth" selected>Growth</option>
+                <option value="midmarket">Mid-market</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="region">Region (salary baseline)</label>
+              <select id="region">
+                <option value="na" selected>North America</option>
+                <option value="weu">Western Europe</option>
+                <option value="eeu">Eastern Europe</option>
+                <option value="latam">Latin America</option>
+                <option value="sasia">South Asia</option>
+                <option value="seasia">Southeast Asia</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sprintlen">Sprint length</label>
+              <select id="sprintlen">
+                <option value="1">1 week</option>
+                <option value="2" selected>2 weeks</option>
+                <option value="3">3 weeks</option>
+                <option value="4">4 weeks</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="features">Features / yr</label>
+              <input type="number" id="features" min="1" step="1" value="24">
+            </div>
+          </div>
+          <div class="roles">
+            <div class="roles-head">
+              <span class="mono-label">Team composition</span>
+              <span class="mono-label" style="text-transform:none;letter-spacing:.04em">count · salary</span>
+            </div>
+            <div id="role-list"></div>
+            <div class="role-totals">
+              <span>Headcount: <b id="tot-head">0</b></span>
+              <span>Payroll: <b id="tot-pay">$0</b>/yr</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="desc" style="margin:0 0 14px">Adjust the levers below. Everything updates the diagram and the number live.</p>
+        <div id="cats"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Assumptions modal (opened from the header gear icon) -->
+<div class="modal-overlay" id="assump-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="modal-head">
+      <div><h2>Settings</h2><div class="c-summary">Every number that drives the model — tunable</div></div>
+      <button class="modal-close" id="assump-close" aria-label="Close assumptions">✕</button>
+    </div>
+    <div class="modal-body"><div id="assump-body"></div></div>
+  </div>
+</div>
+
+<footer>
+  DRIFTS — Decision Drag · Rework · Invalid Assumptions · Fragmented Priorities · Technical Debt · Slow Feedback.
+  An estimate, not an invoice. Tune the assumptions to fit your team. · Built by Ray Labra
+</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   DRIFTS Calculator — engine (unchanged from v1) + v2 layout wiring
+   Annualization basis: each pooled category's annual cost =
+   (per-sprint capacity share) × annual fully-loaded payroll. Keeps the
+   payroll ceiling exact; lets I (native annual) share the same units.
+   S is computed natively and reported OUTSIDE the pool and the ceiling.
+   ===================================================================== */
+const ROLE_DEFS=[
+  {key:'pm',name:'Product Manager',baseSalary:140000,isPM:true},
+  {key:'eng',name:'Engineer',baseSalary:150000},
+  {key:'design',name:'Designer',baseSalary:120000},
+  {key:'qa',name:'QA',baseSalary:100000},
+];
+const STAGE={
+  startup:{label:'Startup',roles:{pm:1,eng:3,design:1,qa:0},sprintWeeks:1,features:12,buildCost:15000,tracks:2},
+  growth:{label:'Growth',roles:{pm:1,eng:6,design:1,qa:1},sprintWeeks:2,features:24,buildCost:30000,tracks:3},
+  midmarket:{label:'Mid-market',roles:{pm:2,eng:10,design:2,qa:2},sprintWeeks:2,features:40,buildCost:50000,tracks:4},
+  enterprise:{label:'Enterprise',roles:{pm:4,eng:24,design:4,qa:6},sprintWeeks:3,features:60,buildCost:80000,tracks:6},
+};
+const REGION={na:1.0,weu:0.85,eeu:0.50,latam:0.45,sasia:0.40,seasia:0.45};
+
+function freshAssumptions(stageKey){
+  const st=STAGE[stageKey];
+  return {
+    dWaste:[0,5,12,22,35], rBase:[2,6,12,20,30], rMult:[0.5,1,1.5,2.5,4], rCeiling:50,
+    mis:[5,15,30,50,70],
+    fRoad:{High:0,Medium:10,Low:20}, fMid:{Rare:0,Sometimes:10,Constantly:20}, fPri:{Stable:0,Occasional:10,Frequent:20}, fCap:60,
+    velMax:[5,15,35], incMax:[5,20,40], tCompound:1.3, tThreshold:60,
+    sBase:{TR:1,BR:2,TL:3,BL:4}, sMult:{TR:0.8,BR:1.2,TL:1.4,BL:1.6},
+    workingDays:230, buildCost:st.buildCost, tracks:st.tracks, rangeSpread:15,
+    dBlocked:{R:60,F:50,I:75,T:85,S:70},
+  };
+}
+let S;
+function freshState(stageKey){
+  const st=STAGE[stageKey];
+  return {
+    stage:stageKey,region:'na',sprintWeeks:st.sprintWeeks,features:st.features,
+    roles:ROLE_DEFS.map(r=>({key:r.key,name:r.name,isPM:!!r.isPM,active:st.roles[r.key]>0,
+      count:st.roles[r.key]||(r.isPM?1:1),salary:r.baseSalary})),
+    d:1,r1:1,r2:1,i1:1,i2:1, f:{road:'High',mid:'Rare',pri:'Stable'},
+    tDebt:20,tInc:20, sx:0.5,sy:0.5,
+    A:freshAssumptions(stageKey), dismissed:new Set(), openCats:new Set(),
+  };
+}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*clamp(t,0,1);
+function fmt(n){n=Math.max(0,Math.round(n));
+  if(n>=1e6)return '$'+(n/1e6).toFixed(n>=1e7?1:2).replace(/\.0+$/,'')+'M';
+  if(n>=1e3)return '$'+Math.round(n/1e3)+'K';
+  return '$'+n.toLocaleString();}
+function fmtRange(v){const sp=S.A.rangeSpread/100;return fmt(v*(1-sp))+' – '+fmt(v*(1+sp));}
+function bandInterp(v,m){if(v<=30)return lerp(0,m[0],v/30);if(v<=60)return lerp(m[0],m[1],(v-30)/30);return lerp(m[1],m[2],(v-60)/40);}
+function quadrant(x,y){return (y>=0.5?'T':'B')+(x>=0.5?'R':'L');}
+
+function compute(){
+  const A=S.A, rmult=REGION[S.region];
+  const active=S.roles.filter(r=>r.active&&r.count>0);
+  const annualPayroll=active.reduce((s,r)=>s+r.salary*rmult*r.count,0);
+  const dailyTeam=active.reduce((s,r)=>s+(r.salary*rmult/A.workingDays)*r.count,0);
+  const sprintDays=S.sprintWeeks*5, sprintCost=dailyTeam*sprintDays, sprintsPerYear=52/S.sprintWeeks;
+  const headcount=active.reduce((s,r)=>s+r.count,0);
+  const dPct=A.dWaste[S.d-1]/100;
+  let rPctRaw=Math.min((A.rBase[S.r1-1]*A.rMult[S.r2-1])/100, A.rCeiling/100);
+  let rPoolPct;
+  if(S.r2<=2){
+    const pm=active.find(r=>r.isPM); let earlyDaily;
+    if(pm)earlyDaily=(pm.salary*rmult/A.workingDays)*pm.count;
+    else earlyDaily=active.reduce((m,r)=>Math.max(m,r.salary*rmult/A.workingDays),0);
+    const rDollar=rPctRaw*(earlyDaily*sprintDays);
+    rPoolPct=sprintCost>0?rDollar/sprintCost:0;
+  } else rPoolPct=rPctRaw;
+  const misRate=A.mis[S.i1-1]/100;
+  const iAnnual=S.features*misRate*A.buildCost;
+  const iPoolPct=annualPayroll>0?iAnnual/annualPayroll:0;
+  let fPct=Math.min((A.fRoad[S.f.road]+A.fMid[S.f.mid]+A.fPri[S.f.pri])/100, A.fCap/100);
+  const vel=bandInterp(S.tDebt,A.velMax)/100, disp=bandInterp(S.tInc,A.incMax)/100;
+  let tPct=vel+disp; const tBoth=S.tDebt>A.tThreshold&&S.tInc>A.tThreshold; if(tBoth)tPct*=A.tCompound;
+  const pool={D:dPct,R:rPoolPct,I:iPoolPct,F:fPct,T:tPct};
+  const rawSum=pool.D+pool.R+pool.I+pool.F+pool.T;
+  const scale=rawSum>1?1/rawSum:1, overflow=rawSum>1;
+  const cats={};
+  for(const k of ['D','R','I','F','T']){const raw=pool[k]*annualPayroll;cats[k]={poolPct:pool[k],raw,norm:raw*scale};}
+  const internalRaw=cats.D.raw+cats.R.raw+cats.I.raw+cats.F.raw+cats.T.raw;
+  const internalNorm=cats.D.norm+cats.R.norm+cats.I.norm+cats.F.norm+cats.T.norm;
+  const q=quadrant(S.sx,S.sy);
+  const perFeatureSprint=sprintCost/Math.max(1,A.tracks);
+  const sAnnual=S.features*misRate*A.sBase[q]*A.sMult[q]*perFeatureSprint;
+  const sev={
+    D:clamp(A.dWaste[S.d-1]/35,0,1),
+    R:clamp(rPctRaw/(A.rCeiling/100),0,1),
+    I:clamp(misRate/0.70,0,1),
+    F:clamp((A.fRoad[S.f.road]+A.fMid[S.f.mid]+A.fPri[S.f.pri])/A.fCap,0,1),
+    T:clamp((vel+disp)*(tBoth?A.tCompound:1)/((A.velMax[2]+A.incMax[2])/100*A.tCompound),0,1),
+    S:clamp(A.sBase[q]*A.sMult[q]/(4*1.6),0,1),
+  };
+  const contrib={D:cats.D.norm,R:cats.R.norm,I:cats.I.norm,F:cats.F.norm,T:cats.T.norm,S:sAnnual};
+  return {annualPayroll,sprintCost,sprintsPerYear,headcount,cats,internalRaw,internalNorm,overflow,rawSum,sAnnual,q,sev,contrib,misRate,tBoth};
+}
+
+const SNAP={
+  d:["Decisions get made fast. Ownership is clear; input rarely blocks a sprint.","Most decisions move; occasional waits on input.","Decisions sometimes stall; ownership is fuzzy in places.","Decisions regularly stall waiting on alignment or approvals.","Decisions stall constantly; sprints routinely lose days to approvals and unclear ownership."],
+  r1:["Tickets are detailed, acceptance criteria clear — devs start without asking.","Mostly clear; occasional clarification needed.","Some tickets are thin; clarification loops happen.","Work often starts on incomplete information.","Work regularly starts on incomplete info; clarification loops are the norm."],
+  r2:["Issues get caught in refinement, before dev starts — cheap to fix.","Caught early, before much is built.","Caught mid-build — context switches, partial work thrown away.","Caught in QA or demo — full build redone, back through the queue.","Caught after ship — build cost plus fix cost plus customer impact."],
+  i1:["Nearly every meaningful feature is validated with users before build.","Most significant bets are validated upfront.","Validation happens sometimes.","Validation rarely happens before build.","The team ships and hopes — almost nothing is validated upfront."],
+  i2:["Validated before discovery starts.","Validated during discovery, before design.","Validated after design, before build.","Validated during or after build.","Validated after ship, if at all."],
+};
+const CATS={
+  D:{t:'Decision Drag',s:'Decisions that stall or never get made'},
+  R:{t:'Rework from Unclear Requirements',s:'The breakdown between product and engineering'},
+  I:{t:'Invalid Assumptions Shipped',s:'Building what nobody validated'},
+  F:{t:'Fragmented Priorities',s:'Mid-sprint pivots and a roadmap nobody trusts'},
+  T:{t:'Technical Debt & Incidents',s:'Unplanned work that steals sprint capacity'},
+  S:{t:'Slow Feedback Loops',s:'The cost of learning slowly — or not at all'},
+};
+// 5-stop green→red gradient for the I light-bank bulbs
+const BULB_COLORS=['#4f8f5e','#8aa84a','#c9b23f','#c08038','#bb4a30'];
+
+/* ---------- render: roles ---------- */
+function renderRoles(){
+  const list=document.getElementById('role-list'); list.innerHTML='';
+  S.roles.forEach((r,idx)=>{
+    const row=document.createElement('div');
+    row.className='role-row'+(r.active?'':' off');
+    row.innerHTML=`
+      <div class="chk ${r.active?'on':''}" data-ridx="${idx}" role="checkbox" aria-checked="${r.active}" tabindex="0">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="rname">${r.name}</div>
+      <input type="number" min="0" step="1" value="${r.count}" data-rcount="${idx}" aria-label="${r.name} count">
+      <input type="number" min="0" step="1000" value="${r.salary}" data-rsal="${idx}" aria-label="${r.name} salary">`;
+    list.appendChild(row);
+  });
+}
+/* ---------- render: category cards ---------- */
+function renderCats(){
+  const host=document.getElementById('cats'); host.innerHTML='';
+  ['D','R','I','F','T','S'].forEach(k=>{
+    const open=S.openCats.has(k);
+    const card=document.createElement('div');
+    card.className='cat'+(open?' open':'');
+    card.innerHTML=`
+      <div class="cat-head" data-cat="${k}">
+        <div class="cat-letter">${k}</div>
+        <div class="cat-title"><div class="t">${CATS[k].t}</div></div>
+        <svg class="cat-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="cat-body"><p class="cat-sub">${CATS[k].s}</p>${bodyFor(k)}</div>`;
+    host.appendChild(card);
+  });
+  wireCatBodies();
+}
+function leverHTML(id,label,val,snapArr){
+  return `<div class="lever">
+    <div class="lever-label"><span>${label}</span><span class="pos">${val} / 5</span></div>
+    <input type="range" min="1" max="5" step="1" value="${val}" data-lever="${id}">
+    <div class="snapshot">${snapArr[val-1]}</div></div>`;
+}
+// R — stepper with 5 plain segment bars that fill solid (no color scale)
+function stepperHTML(id,label,val,snapArr){
+  let segs='';
+  for(let i=1;i<=5;i++) segs+=`<button class="step-seg${i<=val?' on':''}" data-segstep="${id}" data-pos="${i}" aria-label="${label} level ${i}"></button>`;
+  return `<div class="lever">
+    <div class="lever-label"><span>${label}</span><span class="pos"><b data-stepval="${id}">${val}</b> / 5</span></div>
+    <div class="stepper">
+      <button class="step-btn" data-step="${id}" data-dir="-1" aria-label="Decrease ${label}" ${val<=1?'disabled':''}>–</button>
+      <div class="step-segs" data-segwrap="${id}">${segs}</div>
+      <button class="step-btn" data-step="${id}" data-dir="1" aria-label="Increase ${label}" ${val>=5?'disabled':''}>+</button>
+    </div>
+    <div class="snapshot" data-snap="${id}">${snapArr[val-1]}</div></div>`;
+}
+// I — cumulative "light bank" of 5 bulbs on a green→red gradient
+function bulbHTML(id,label,val,snapArr){
+  let bulbs='';
+  for(let i=1;i<=5;i++){
+    bulbs+=`<button class="bulb${i<=val?' on':''}" data-bulb="${id}" data-pos="${i}" style="--bulb:${BULB_COLORS[i-1]}" aria-label="${label} level ${i}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.1 14c.2-1 .6-1.7 1.4-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.8.8 1.2 1.5 1.4 2.5"/></svg>
+    </button>`;
+  }
+  return `<div class="lever">
+    <div class="lever-label"><span>${label}</span><span class="pos"><b data-stepval="${id}">${val}</b> / 5</span></div>
+    <div class="bulbbank">${bulbs}</div>
+    <div class="snapshot" data-snap="${id}">${snapArr[val-1]}</div></div>`;
+}
+function bodyFor(k){
+  if(k==='D')return leverHTML('d','How decisions move',S.d,SNAP.d);
+  if(k==='R')return stepperHTML('r1','Requirements clarity',S.r1,SNAP.r1)+stepperHTML('r2','Discovery point — how late problems surface',S.r2,SNAP.r2);
+  if(k==='I')return bulbHTML('i1','Validation frequency',S.i1,SNAP.i1)+bulbHTML('i2','Validation timing',S.i2,SNAP.i2);
+  if(k==='F')return segHTML();
+  if(k==='T')return tHTML();
+  if(k==='S')return sHTML();
+  return '';
+}
+function segHTML(){
+  const dim=(label,key,opts)=>`<div class="seg-dim"><div class="dlabel">${label}</div><div class="seg" data-seg="${key}">`+
+    opts.map(o=>`<button data-val="${o}" class="${S.f[key]===o?'on':''}">${o}</button>`).join('')+`</div></div>`;
+  return dim('Roadmap trust','road',['High','Medium','Low'])+dim('Mid-sprint changes','mid',['Rare','Sometimes','Constantly'])+dim('Priority shifts','pri',['Stable','Occasional','Frequent']);
+}
+function tHTML(){
+  const bar=(label,key,val)=>`<div class="tslider-wrap">
+    <div class="lever-label"><span>${label}</span><span class="pos tval" id="tv-${key}">${val}%</span></div>
+    <div class="tbar"><div class="mask" id="tm-${key}" style="width:${100-val}%"></div>
+      <input type="range" min="0" max="100" step="1" value="${val}" data-tslider="${key}" aria-label="${label}"></div></div>`;
+  return `<p class="snapshot" style="font-style:normal;min-height:0;margin-top:14px">More fill = worse. Below 60% the two move independently; past 60% they start feeding each other.</p>`+bar('Debt load','tDebt',S.tDebt)+bar('Incident & bug rate','tInc',S.tInc);
+}
+function sHTML(){
+  return `<div class="xy-frame">
+    <div class="xy-y-label xy-ax-label">Learning velocity →</div>
+    <div class="xy" id="xy">
+      <div class="axis axv"></div><div class="axis axh"></div>
+      <div class="ql q-tl">Bad signal,<br>fast action — dangerous</div>
+      <div class="ql q-tr">Good signal,<br>fast learning</div>
+      <div class="ql q-bl">Drifting blind,<br>compounding</div>
+      <div class="ql q-br">Good signal,<br>sitting unused</div>
+      <div class="dot" id="xy-dot"></div>
+    </div><div></div>
+    <div class="xy-ax-label">Signal quality →</div>
+  </div><div class="snapshot" id="s-snap" style="text-align:center"></div>`;
+}
+
+/* ---------- render: radar (enlarged) ---------- */
+function renderRadar(R){
+  const order=['D','R','I','F','T','S'];
+  const size=300, cx=size/2, cy=size/2, rad=size/2-38;
+  const ang=i=>(-90+i*60)*Math.PI/180;
+  const pt=(i,r)=>[cx+Math.cos(ang(i))*rad*r, cy+Math.sin(ang(i))*rad*r];
+  let svg=`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="max-width:100%;height:auto" role="img" aria-label="DRIFTS radar">`;
+  for(let g=1;g<=4;g++){const pts=order.map((_,i)=>pt(i,g/4).join(',')).join(' ');svg+=`<polygon points="${pts}" fill="none" stroke="var(--border)" stroke-width="1"/>`;}
+  order.forEach((k,i)=>{const [x,y]=pt(i,1);svg+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`;
+    const [lx,ly]=pt(i,1.15);svg+=`<text x="${lx}" y="${ly}" font-family="var(--font-display)" font-size="14" font-weight="600" fill="var(--text-muted)" text-anchor="middle" dominant-baseline="middle">${k}</text>`;});
+  const dInt=(S.d-1)/4;
+  const capMap={D:1,R:R.A_dBlocked.R,F:R.A_dBlocked.F,I:R.A_dBlocked.I,T:R.A_dBlocked.T,S:R.A_dBlocked.S};
+  if(dInt>0){const cpts=order.map((k,i)=>{const cap=(k==='D')?1:capMap[k]/100;return pt(i,1-(1-cap)*dInt).join(',');}).join(' ');
+    svg+=`<polygon points="${cpts}" fill="var(--text-muted)" fill-opacity="0.10" stroke="var(--text-muted)" stroke-opacity="0.4" stroke-width="1" stroke-dasharray="3 3"/>`;}
+  const dpts=order.map((k,i)=>pt(i,Math.max(0.02,R.sev[k])).join(',')).join(' ');
+  svg+=`<polygon points="${dpts}" fill="var(--accent-warm)" fill-opacity="0.22" stroke="var(--accent-warm)" stroke-width="2"/>`;
+  order.forEach((k,i)=>{const [x,y]=pt(i,Math.max(0.02,R.sev[k]));svg+=`<circle cx="${x}" cy="${y}" r="3.8" fill="var(--accent-warm)"/>`;});
+  svg+=`</svg>`;
+  document.getElementById('radar').innerHTML=svg;
+}
+
+function renderLedger(R){
+  let html='';
+  ['D','R','I','F','T'].forEach(k=>{const c=R.cats[k];const showNorm=R.overflow&&Math.abs(c.raw-c.norm)>1;
+    html+=`<div class="ledger-row"><div class="ll">${k}</div><div class="lname">${CATS[k].t}</div>
+      <div class="lcost"><div class="raw">${fmt(c.raw)}</div>${showNorm?`<div class="norm">scaled: ${fmt(c.norm)}</div>`:''}</div></div>`;});
+  html+=`<div class="ledger-row ledger-sep"><div class="ll" style="background:var(--danger-soft);color:var(--danger)">S</div>
+    <div class="lname">Slow Feedback <small>market time lost — outside the payroll pool</small></div>
+    <div class="lcost"><div class="raw" style="color:var(--danger)">${fmt(R.sAnnual)}</div></div></div>`;
+  document.getElementById('ledger').innerHTML=html;
+  document.getElementById('overflow-slot').innerHTML = R.overflow
+    ? `<div class="overflow-note">Your problems now exceed your team's total capacity. The internal total is scaled to your real payroll ceiling — each category keeps its relative share.</div>` : '';
+}
+function renderHero(R){
+  document.getElementById('hero-internal').textContent=fmtRange(R.internalNorm);
+  document.getElementById('hero-s').textContent=fmtRange(R.sAnnual);
+  document.getElementById('sline').classList.toggle('s-hot', R.sAnnual>R.internalNorm && R.internalNorm>0);
+}
+const NARR={
+  D:"Decision drag isn't just slowing delivery down — it's eroding the team's confidence that things can move at all.",
+  R:"When requirements are consistently unclear, engineering stops trusting that the work they start will be the work they finish.",
+  I:"Shipping without validation doesn't just waste build cycles — it quietly chips away at the team's belief that what they're building matters.",
+  F:"When priorities keep shifting, the team spends its energy reacting instead of building, and stops trusting this sprint's plan will survive the week.",
+  T:"When sprints keep getting blown up by incidents, planning starts to feel pointless. The best engineers notice first.",
+  S:"Without feedback on what's working, shipping and hoping becomes the culture. Curiosity atrophies when learning is slow.",
+};
+function renderNarrative(R){
+  const ranked=Object.entries(R.contrib).sort((a,b)=>b[1]-a[1]);
+  const top=ranked.filter(([k,v])=>v>0).slice(0,3);
+  const n=document.getElementById('narrative');
+  n.innerHTML = top.length===0
+    ? '<p>Everything is dialed to its best position — no measurable cost of inaction. Move a lever to see what tolerating a problem would cost.</p>'
+    : top.map(([k])=>`<p>${NARR[k]}</p>`).join('');
+  const lev=document.getElementById('leverage');
+  const [topK,topV]=ranked[0];
+  if(topV<=0){lev.style.display='none';return;}
+  lev.style.display='block';
+  let msg;
+  if(topK==='D')msg=`<b>Fixing decision drag</b> unlocks improvement across every other category — it constrains how well everything else can run. Highest-leverage place to start.`;
+  else if(topK==='T')msg=`<b>Technical debt and incidents</b> are your single biggest source of lost capacity. Every sprint costs more than it should, and the gap compounds.`;
+  else if(topK==='I'||topK==='S')msg=`<b>Unvalidated assumptions and slow feedback</b> are your highest compounding cost — addressing either one reduces the other.`;
+  else msg=`<b>${CATS[topK].t}</b> is your single largest dollar contributor right now. It's the highest-leverage place to start.`;
+  lev.innerHTML=`Highest-leverage fix · ${msg}`;
+}
+
+/* ---------- nudges ---------- */
+function buildNudges(R){
+  const A=S.A, list=[];
+  const add=(id,cat,body,applyFn)=>list.push({id,cat,body,applyFn});
+  if(S.d>3){
+    add('d_sys','D',`<b>Decision drag is limiting what's possible across your whole team.</b> Addressing it unlocks value in every other category.`,null);
+    add('d_i1','I',`Pressure decisions tend to skip validation. Does your validation frequency reflect this?`,()=>{S.i1=clamp(S.i1+1,1,5);});
+  }
+  if(S.r1>3)add('r1_i1','I',`Unclear requirements mean assumptions fill the gap. Worth checking how often your team validates before building.`,()=>{S.i1=clamp(S.i1+1,1,5);});
+  if(S.r2>3)add('r2_i2','I',`Teams that catch requirements issues late often validate assumptions late too. Worth checking your validation timing.`,()=>{S.i2=clamp(S.i2+1,1,5);});
+  const fHot=S.f.mid==='Constantly'||S.f.pri==='Frequent';
+  if(fHot){
+    add('f_i1','I',`No time to validate when priorities keep shifting. Does your validation frequency reflect this?`,()=>{S.i1=clamp(S.i1+1,1,5);});
+    add('f_r','R',`Rushed requirements under priority pressure feed rework. Worth checking your requirements clarity.`,()=>{S.r1=clamp(S.r1+1,1,5);});
+  }
+  if(S.f.road==='Low'&&S.f.mid==='Constantly'&&S.f.pri==='Frequent')add('f_tdebt','T',`Constant priority shifts mean debt never gets addressed. Does your debt load reflect this?`,()=>{S.tDebt=Math.max(S.tDebt,70);});
+  const th=A.tThreshold;
+  if(S.tDebt>th)add('t_inc','T',`High debt makes incidents more probable and severe. Does your incident rate reflect this?`,()=>{S.tInc=Math.max(S.tInc,70);});
+  if(S.tInc>th)add('t_debt','T',`Constant firefighting means shortcuts accumulate. Does your debt load reflect this?`,()=>{S.tDebt=Math.max(S.tDebt,70);});
+  const tBoth=S.tDebt>th&&S.tInc>th;
+  if(tBoth){
+    add('t_fmid','F',`High debt and incidents typically blow up sprint commitments. Does your mid-sprint change rate reflect this?`,()=>{S.f.mid='Constantly';});
+    add('t_fpri','F',`Incidents displace planned work and destabilize priorities. Does your priority stability reflect this?`,()=>{S.f.pri='Frequent';});
+    add('t_froad','F',`Hard to trust a roadmap when incidents keep blowing it up. Does your roadmap trust reflect this?`,()=>{S.f.road='Low';});
+    add('t_ssig','S',`Firefighting mode means instrumentation never gets built. Does your signal quality reflect this?`,()=>{S.sx=Math.max(0.05,S.sx-0.25);});
+  }
+  if(S.sy<0.5)add('s_d','D',`Without clear signal on what's working, decisions tend to stall or get relitigated. Your decision drag cost may be understated.`,()=>{S.d=clamp(S.d+1,1,5);});
+  if(S.i1>3&&R.q==='BL')add('i_s_bl','S',`<b>Highest compounding cost in DRIFTS:</b> unvalidated assumptions plus slow, noisy feedback. Wrong bets fester the longest here.`,null);
+
+  const visible=list.filter(n=>!S.dismissed.has(n.id));
+  if(visible.length===0)return [];
+  let t1=null,t1v=-1;
+  visible.forEach(n=>{const v=R.contrib[n.cat]||0;if(v>t1v){t1v=v;t1=n.id;}});
+  visible.forEach(n=>n.tier=(n.id===t1&&t1v>0)?1:2);
+  visible.sort((a,b)=>(a.tier-b.tier)||((R.contrib[b.cat]||0)-(R.contrib[a.cat]||0)));
+  const t1s=visible.filter(n=>n.tier===1), t2s=visible.filter(n=>n.tier===2).slice(0,3);
+  return [...t1s,...t2s];
+}
+function renderNudges(R){
+  const host=document.getElementById('nudges');
+  const nudges=buildNudges(R);
+  host.innerHTML=nudges.map(n=>`
+    <div class="nudge t${n.tier}">
+      <div class="nh"><span class="nicon">💡</span>Did you know${n.tier===1?' · priority':''}</div>
+      <div class="nbody">${n.body}</div>
+      <div class="nact">
+        ${n.applyFn?`<button class="apply" data-napply="${n.id}">Apply suggested adjustment</button>`:''}
+        <button class="dismiss" data-ndismiss="${n.id}">Dismiss</button>
+      </div></div>`).join('');
+  host.querySelectorAll('[data-napply]').forEach(b=>b.onclick=()=>{const n=nudges.find(x=>x.id===b.dataset.napply);if(n&&n.applyFn){n.applyFn();S.dismissed.add(n.id);refresh(true);}});
+  host.querySelectorAll('[data-ndismiss]').forEach(b=>b.onclick=()=>{S.dismissed.add(b.dataset.ndismiss);refresh(false);});
+}
+
+/* ---------- assumptions ---------- */
+function renderAssump(){
+  const A=S.A, D=freshAssumptions(S.stage);
+  const body=document.getElementById('assump-body'), rows=[];
+  const path=p=>p.split('.').reduce((o,k)=>o[k],A);
+  const setPath=(p,v)=>{const ks=p.split('.');let o=A;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks[ks.length-1]]=v;};
+  const defOf=p=>p.split('.').reduce((o,k)=>o[k],D);
+  function group(title,help,items){
+    let h=`<div class="agroup"><h4>${title}</h4><div class="ahelp">${help}</div>`;
+    items.forEach(([label,p,step])=>{const v=path(p),dv=defOf(p),changed=Math.abs(v-dv)>1e-9;
+      h+=`<div class="arow${changed?' changed':''}"><label>${label}</label>
+        <input type="number" step="${step||1}" value="${v}" data-apath="${p}">
+        <button class="reset" data-areset="${p}" title="Reset to ${dv}" ${changed?'':'disabled style="opacity:.3"'}>↺</button></div>`;});
+    return h+`</div>`;
+  }
+  rows.push(group('D — Decision Drag','Capacity waste % at each of the five lever positions.',A.dWaste.map((_,i)=>[`Position ${i+1}`,`dWaste.${i}`,1])));
+  rows.push(group('R — Rework','Lever-1 base waste %, Lever-2 discovery multiplier, and the ceiling that stops R dominating the pool.',
+    [...A.rBase.map((_,i)=>[`L1 base waste pos ${i+1} (%)`,`rBase.${i}`,1]),...A.rMult.map((_,i)=>[`L2 multiplier pos ${i+1} (×)`,`rMult.${i}`,0.1]),['Waste ceiling (%)','rCeiling',1]]));
+  rows.push(group('I & S — Misdirection','Share of features built on unvalidated assumptions, by validation frequency. Drives both I and S.',A.mis.map((_,i)=>[`Validation pos ${i+1} (%)`,`mis.${i}`,1])));
+  rows.push(group('I — Build cost','Standalone build cost per feature (kept independent of feature volume so the volume slider genuinely scales cost).',[['Build cost per feature ($)','buildCost',1000]]));
+  rows.push(group('F — Fragmented Priorities','Waste % per dimension level (best level is always 0%). Additive, capped.',
+    [['Roadmap trust — Medium','fRoad.Medium',1],['Roadmap trust — Low','fRoad.Low',1],['Mid-sprint — Sometimes','fMid.Sometimes',1],['Mid-sprint — Constantly','fMid.Constantly',1],['Priority — Occasional','fPri.Occasional',1],['Priority — Frequent','fPri.Frequent',1],['Combined cap (%)','fCap',1]]));
+  rows.push(group('T — Technical Debt','Band ceilings for velocity tax and incident displacement, the compounding multiplier, and the threshold both sliders must cross.',
+    [['Velocity tax — low band max (%)','velMax.0',1],['Velocity tax — med band max (%)','velMax.1',1],['Velocity tax — high band max (%)','velMax.2',1],['Incidents — low band max (%)','incMax.0',1],['Incidents — med band max (%)','incMax.1',1],['Incidents — high band max (%)','incMax.2',1],['Compounding multiplier (×)','tCompound',0.1],['Threshold (%)','tThreshold',1]]));
+  rows.push(group('S — Slow Feedback','Downstream sprints before discovery and the quadrant multiplier, by quadrant (TR/BR/TL/BL). Plus parallel feature tracks.',
+    [['Baseline sprints — top-right','sBase.TR',1],['Baseline sprints — bottom-right','sBase.BR',1],['Baseline sprints — top-left','sBase.TL',1],['Baseline sprints — bottom-left','sBase.BL',1],['Multiplier — top-right (×)','sMult.TR',0.1],['Multiplier — bottom-right (×)','sMult.BR',0.1],['Multiplier — top-left (×)','sMult.TL',0.1],['Multiplier — bottom-left (×)','sMult.BL',0.1],['Parallel feature tracks','tracks',1]]));
+  rows.push(group('Global','Working days per year, the displayed ± range spread, and the decision-drag overlay weights (capturable improvement % at D position 5 — visual only).',
+    [['Working days per year','workingDays',1],['Display range spread (±%)','rangeSpread',1],['Overlay — R capturable @D5 (%)','dBlocked.R',1],['Overlay — F capturable @D5 (%)','dBlocked.F',1],['Overlay — I capturable @D5 (%)','dBlocked.I',1],['Overlay — T capturable @D5 (%)','dBlocked.T',1],['Overlay — S capturable @D5 (%)','dBlocked.S',1]]));
+  rows.push(`<div class="assump-actions"><button class="ghost-btn" id="assump-reset-all">Reset all assumptions</button></div>`);
+  body.innerHTML=rows.join('');
+  body.querySelectorAll('[data-apath]').forEach(inp=>inp.onchange=()=>{const v=parseFloat(inp.value);if(!isNaN(v)){setPath(inp.dataset.apath,v);refresh(true);}});
+  body.querySelectorAll('[data-areset]').forEach(b=>b.onclick=()=>{setPath(b.dataset.areset,defOf(b.dataset.areset));refresh(true);});
+  document.getElementById('assump-reset-all').onclick=()=>{S.A=freshAssumptions(S.stage);refresh(true);};
+}
+
+/* ---------- refresh ---------- */
+function refresh(rebuildControls){
+  const R=compute(); R.A_dBlocked=S.A.dBlocked;
+  // rebuild controls FIRST so the per-category cost spans exist before we fill them
+  if(rebuildControls){renderCats();renderRoles();syncTopInputs();renderAssump();}
+  renderHero(R); renderRadar(R); renderLedger(R); renderNarrative(R); renderNudges(R);
+  document.getElementById('tot-head').textContent=R.headcount;
+  document.getElementById('tot-pay').textContent=fmt(R.annualPayroll);
+  const tsum=document.getElementById('team-summary');
+  if(tsum)tsum.textContent=`${STAGE[S.stage].label} · ${R.headcount} people · ${fmt(R.annualPayroll)} payroll`;
+  const ss=document.getElementById('s-snap');
+  if(ss){const qmap={TR:'Good signal, fast learning — minimal cost.',TL:'Bad signal, fast action — moving fast in the wrong direction.',BR:'Good signal, slow to act — data sits unreviewed.',BL:'Bad signal, slow to act — drifting blind, compounding misdirection.'};ss.textContent=qmap[R.q];}
+  placeDot();
+}
+
+/* ---------- wiring ---------- */
+function syncTopInputs(){
+  document.getElementById('stage').value=S.stage;
+  document.getElementById('region').value=S.region;
+  document.getElementById('sprintlen').value=S.sprintWeeks;
+  document.getElementById('features').value=S.features;
+}
+function placeDot(){const dot=document.getElementById('xy-dot');if(dot){dot.style.left=(S.sx*100)+'%';dot.style.top=((1-S.sy)*100)+'%';}}
+// shared updater for R steppers (segments + buttons)
+function setStepper(id,nv){
+  nv=clamp(nv,1,5); if(nv===S[id])return; S[id]=nv;
+  const wrap=document.querySelector(`[data-segwrap="${id}"]`);
+  if(wrap)wrap.querySelectorAll('.step-seg').forEach(s=>s.classList.toggle('on',+s.dataset.pos<=nv));
+  const v=document.querySelector(`[data-stepval="${id}"]`); if(v)v.textContent=nv;
+  const sn=document.querySelector(`[data-snap="${id}"]`); if(sn)sn.textContent=SNAP[id][nv-1];
+  document.querySelectorAll(`[data-step="${id}"]`).forEach(b=>{const d=+b.dataset.dir;b.disabled=(d<0&&nv<=1)||(d>0&&nv>=5);});
+  refresh(false);
+}
+function wireCatBodies(){
+  document.querySelectorAll('.cat-head').forEach(h=>h.onclick=()=>{const k=h.dataset.cat;if(S.openCats.has(k))S.openCats.delete(k);else S.openCats.add(k);renderCats();refresh(false);placeDot();});
+  document.querySelectorAll('[data-lever]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.lever;S[id]=parseInt(inp.value,10);
+    const w=inp.closest('.lever');w.querySelector('.pos').textContent=inp.value+' / 5';w.querySelector('.snapshot').textContent=SNAP[id][inp.value-1];refresh(false);});
+  // R steppers: +/- buttons and direct segment clicks
+  document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>setStepper(b.dataset.step, S[b.dataset.step]+(+b.dataset.dir)));
+  document.querySelectorAll('[data-segstep]').forEach(s=>s.onclick=()=>setStepper(s.dataset.segstep, +s.dataset.pos));
+  // I light banks: cumulative bulbs
+  document.querySelectorAll('[data-bulb]').forEach(b=>b.onclick=()=>{const id=b.dataset.bulb,pos=+b.dataset.pos;S[id]=pos;
+    const bank=b.closest('.lever');bank.querySelectorAll('[data-bulb]').forEach(x=>x.classList.toggle('on',+x.dataset.pos<=pos));
+    bank.querySelector(`[data-stepval="${id}"]`).textContent=pos;bank.querySelector(`[data-snap="${id}"]`).textContent=SNAP[id][pos-1];refresh(false);});
+  document.querySelectorAll('[data-seg]').forEach(seg=>seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{S.f[seg.dataset.seg]=b.dataset.val;seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));refresh(false);}));
+  document.querySelectorAll('[data-tslider]').forEach(inp=>inp.oninput=()=>{const key=inp.dataset.tslider;S[key]=parseInt(inp.value,10);document.getElementById('tv-'+key).textContent=inp.value+'%';document.getElementById('tm-'+key).style.width=(100-inp.value)+'%';refresh(false);});
+  const xy=document.getElementById('xy');
+  if(xy){let drag=false;
+    const set=e=>{const r=xy.getBoundingClientRect();const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;S.sx=clamp(cx/r.width,0,1);S.sy=clamp(1-cy/r.height,0,1);placeDot();refresh(false);};
+    xy.addEventListener('pointerdown',e=>{drag=true;xy.setPointerCapture(e.pointerId);set(e);});
+    xy.addEventListener('pointermove',e=>{if(drag)set(e);});
+    xy.addEventListener('pointerup',()=>drag=false);}
+  placeDot();
+}
+function wireTeam(){
+  const list=document.getElementById('role-list');
+  list.addEventListener('click',e=>{const c=e.target.closest('[data-ridx]');if(!c)return;const i=+c.dataset.ridx;S.roles[i].active=!S.roles[i].active;renderRoles();refresh(false);});
+  list.addEventListener('keydown',e=>{const c=e.target.closest('[data-ridx]');if(!c)return;if(e.key===' '||e.key==='Enter'){e.preventDefault();const i=+c.dataset.ridx;S.roles[i].active=!S.roles[i].active;renderRoles();refresh(false);}});
+  list.addEventListener('input',e=>{if(e.target.dataset.rcount!=null){const i=+e.target.dataset.rcount;S.roles[i].count=Math.max(0,+e.target.value||0);refresh(false);}if(e.target.dataset.rsal!=null){const i=+e.target.dataset.rsal;S.roles[i].salary=Math.max(0,+e.target.value||0);refresh(false);}});
+  document.getElementById('stage').onchange=e=>applyStage(e.target.value);
+  document.getElementById('region').onchange=e=>{S.region=e.target.value;refresh(false);};
+  document.getElementById('sprintlen').onchange=e=>{S.sprintWeeks=+e.target.value;refresh(false);};
+  document.getElementById('features').oninput=e=>{S.features=Math.max(1,+e.target.value||1);refresh(false);};
+}
+function applyStage(stageKey){
+  const st=STAGE[stageKey];
+  S.stage=stageKey;S.sprintWeeks=st.sprintWeeks;S.features=st.features;
+  S.roles=ROLE_DEFS.map(r=>({key:r.key,name:r.name,isPM:!!r.isPM,active:st.roles[r.key]>0,count:st.roles[r.key]||(r.isPM?1:1),salary:r.baseSalary}));
+  S.A.buildCost=st.buildCost;S.A.tracks=st.tracks;
+  refresh(true);
+}
+function init(){
+  S=freshState('growth');
+  renderRoles();renderCats();renderAssump();wireTeam();syncTopInputs();
+  document.getElementById('team-toggle').onclick=()=>document.getElementById('team-panel').classList.toggle('open');
+  document.getElementById('breakdown-toggle').onclick=()=>document.getElementById('breakdown').classList.toggle('open');
+  // assumptions modal
+  const am=document.getElementById('assump-modal');
+  const openAssump=()=>{am.classList.add('open');am.setAttribute('aria-hidden','false');};
+  const closeAssump=()=>{am.classList.remove('open');am.setAttribute('aria-hidden','true');};
+  document.getElementById('settings-toggle').onclick=openAssump;
+  document.getElementById('assump-close').onclick=closeAssump;
+  am.addEventListener('click',e=>{if(e.target===am)closeAssump();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&am.classList.contains('open'))closeAssump();});
+  document.getElementById('reset-all').onclick=()=>{const stage=S.stage;S=freshState(stage);renderRoles();renderCats();renderAssump();syncTopInputs();refresh(false);placeDot();};
+  const tt=document.getElementById('theme-toggle');
+  const saved=localStorage.getItem('drifts-theme');
+  if(saved)document.documentElement.setAttribute('data-theme',saved);
+  tt.onclick=()=>{const cur=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',cur);localStorage.setItem('drifts-theme',cur);refresh(false);};
+  refresh(false);
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
