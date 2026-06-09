@@ -507,7 +507,11 @@ function compute(){
   const internalNorm=cats.D.norm+cats.R.norm+cats.I.norm+cats.F.norm+cats.T.norm;
   const q=quadrant(S.sx,S.sy);
   const perFeatureSprint=sprintCost/Math.max(1,A.tracks);
-  const sAnnual=S.features*misRate*A.sBase[q]*A.sMult[q]*perFeatureSprint;
+  // Physical-capacity ceiling: wasted downstream effort can't exceed the team's
+  // total annual effort. Without this, S could imply more wasted sprints than the
+  // team can physically run (e.g. 107 feature-sprints when only 78 exist).
+  const sRaw=S.features*misRate*A.sBase[q]*A.sMult[q]*perFeatureSprint;
+  const sAnnual=Math.min(sRaw, annualPayroll);
   const sev={
     D:clamp(A.dWaste[S.d-1]/35,0,1),
     R:clamp(rPctRaw/(A.rCeiling/100),0,1),
