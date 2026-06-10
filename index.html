@@ -502,11 +502,19 @@ function compute(){
   let tPct=vel+disp; const tBoth=S.tDebt>A.tThreshold&&S.tInc>A.tThreshold; if(tBoth)tPct*=A.tCompound;
   const pool={D:dPct,R:rPoolPct,I:iPoolPct,F:fPct,T:tPct};
   const rawSum=pool.D+pool.R+pool.I+pool.F+pool.T;
-  const scale=rawSum>1?1/rawSum:1, overflow=rawSum>1;
+  // Compounding losses: dysfunctions overlap, so each category consumes a share of
+  // the capacity the others leave behind — total waste = 1 − Π(1−w). Overlapping
+  // causes aren't double-counted, and the total approaches but never exceeds payroll.
+  // (Additive summing read a middling-on-everything team as ~100% of payroll wasted,
+  // contradicting the feature output its own inputs assume.)
+  let healthy=1; for(const k of ['D','R','I','F','T']) healthy*=Math.max(0,1-Math.min(1,pool[k]));
+  const totalWaste=1-healthy;
+  const attrib=rawSum>0?totalWaste/rawSum:0;  // proportional, order-independent attribution
+  const overflow=(rawSum-totalWaste)>=0.10;   // overlap discount large enough to warrant the explainer
   const cats={};
-  for(const k of ['D','R','I','F','T']){const raw=pool[k]*annualPayroll;cats[k]={poolPct:pool[k],raw,norm:raw*scale};}
+  for(const k of ['D','R','I','F','T']){const raw=pool[k]*annualPayroll;cats[k]={poolPct:pool[k],raw,norm:raw*attrib};}
   const internalRaw=cats.D.raw+cats.R.raw+cats.I.raw+cats.F.raw+cats.T.raw;
-  const internalNorm=cats.D.norm+cats.R.norm+cats.I.norm+cats.F.norm+cats.T.norm;
+  const internalNorm=totalWaste*annualPayroll;
   const q=quadrant(S.sx,S.sy);
   const perFeatureSprint=sprintCost/Math.max(1,A.tracks);
   // Physical-capacity ceiling: wasted downstream effort can't exceed the team's
@@ -680,15 +688,17 @@ function renderRadar(R){
 
 function renderLedger(R){
   let html='';
-  ['D','R','I','F','T'].forEach(k=>{const c=R.cats[k];const showNorm=R.overflow&&Math.abs(c.raw-c.norm)>1;
+  ['D','R','I','F','T'].forEach(k=>{const c=R.cats[k];
+    // secondary figure = this line's share after the overlap discount; show when material
+    const showNorm=(c.raw-c.norm)>Math.max(1000,c.raw*0.02);
     html+=`<div class="ledger-row"><div class="ll">${k}</div><div class="lname">${CATS[k].t}</div>
-      <div class="lcost"><div class="raw">${fmt(c.raw)}</div>${showNorm?`<div class="norm">scaled: ${fmt(c.norm)}</div>`:''}</div></div>`;});
+      <div class="lcost"><div class="raw">${fmt(c.raw)}</div>${showNorm?`<div class="norm">counted: ${fmt(c.norm)}</div>`:''}</div></div>`;});
   html+=`<div class="ledger-row ledger-sep"><div class="ll" style="background:var(--danger-soft);color:var(--danger)">S</div>
     <div class="lname">Slow Feedback <small>market time lost — outside the payroll pool</small></div>
     <div class="lcost"><div class="raw" style="color:var(--danger)">${fmt(R.sAnnual)}</div></div></div>`;
   document.getElementById('ledger').innerHTML=html;
   document.getElementById('overflow-slot').innerHTML = R.overflow
-    ? `<div class="overflow-note">Your problems now exceed your team's total capacity. The internal total is scaled to your real payroll ceiling — each category keeps its relative share.</div>` : '';
+    ? `<div class="overflow-note">These problems overlap — the same lost hour often has several causes. The total counts each hour once, which is why it reads lower than the category lines summed and can never exceed your payroll.</div>` : '';
 }
 function renderHero(R){
   // cap the displayed upper bound at payroll so the range never contradicts

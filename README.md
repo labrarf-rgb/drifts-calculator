@@ -16,7 +16,7 @@ An interactive calculator that puts a dollar figure on the hidden cost of tolera
 ## How it works
 
 - **One self-contained file.** `index.html` — no build step, no dependencies, no backend. Vanilla HTML/CSS/JS with an inline SVG radar.
-- **A real cost model, not a questionnaire.** Five categories (D, R, I, F, T) draw from a single team-capacity pool that's proportionally normalized so the internal-capacity total can never exceed the team's fully-loaded payroll. S (market time lost to slow feedback) is reported separately, outside that ceiling.
+- **A real cost model, not a questionnaire.** Five categories (D, R, I, F, T) compound against a single team-capacity pool — each consumes a share of the capacity the others leave behind — so overlapping causes are never double-counted and the internal-capacity total can approach but never exceed the team's fully-loaded payroll. S (market time lost to slow feedback) is reported separately, outside that ceiling and capped by it.
 - **Raw-dominant ledger.** Each category shows its raw cost prominently; making one problem worse never visibly shrinks another.
 - **Transparent assumptions.** Every number driving the model is exposed and editable in the Settings panel — tune it to your team or trust the stage-based defaults.
 - **Light/dark mode**, responsive, and embeddable via iframe.
