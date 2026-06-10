@@ -471,7 +471,9 @@ function fmt(n){n=Math.max(0,Math.round(n));
   if(n>=1e6)return '$'+(n/1e6).toFixed(n>=1e7?1:2).replace(/\.0+$/,'')+'M';
   if(n>=1e3)return '$'+Math.round(n/1e3)+'K';
   return '$'+n.toLocaleString();}
-function fmtRange(v){if(v<=0)return '$0';const sp=S.A.rangeSpread/100;return fmt(v*(1-sp))+' – '+fmt(v*(1+sp));}
+function fmtRange(v,cap){if(v<=0)return '$0';const sp=S.A.rangeSpread/100;
+  const lo=v*(1-sp), hi=cap?Math.min(v*(1+sp),cap):v*(1+sp);
+  return hi-lo<1?fmt(v):fmt(lo)+' – '+fmt(hi);}
 function bandInterp(v,m){if(v<=30)return lerp(0,m[0],v/30);if(v<=60)return lerp(m[0],m[1],(v-30)/30);return lerp(m[1],m[2],(v-60)/40);}
 function quadrant(x,y){return (y>=0.5?'T':'B')+(x>=0.5?'R':'L');}
 
@@ -689,8 +691,10 @@ function renderLedger(R){
     ? `<div class="overflow-note">Your problems now exceed your team's total capacity. The internal total is scaled to your real payroll ceiling — each category keeps its relative share.</div>` : '';
 }
 function renderHero(R){
-  document.getElementById('hero-internal').textContent=fmtRange(R.internalNorm);
-  document.getElementById('hero-s').textContent=fmtRange(R.sAnnual);
+  // cap the displayed upper bound at payroll so the range never contradicts
+  // the "payroll-bounded" claim shown right beneath it
+  document.getElementById('hero-internal').textContent=fmtRange(R.internalNorm,R.annualPayroll);
+  document.getElementById('hero-s').textContent=fmtRange(R.sAnnual,R.annualPayroll);
   document.getElementById('sline').classList.toggle('s-hot', R.sAnnual>R.internalNorm && R.internalNorm>0);
 }
 const NARR={
@@ -761,6 +765,11 @@ function buildNudges(R){
 function renderNudges(R){
   const host=document.getElementById('nudges');
   const nudges=buildNudges(R);
+  // skip the rebuild when the visible set is unchanged — otherwise every slider
+  // tick restarts the entry animation and the nudges visibly flicker
+  const sig=nudges.map(n=>n.id+':'+n.tier).join('|');
+  if(host.dataset.sig===sig)return;
+  host.dataset.sig=sig;
   host.innerHTML=nudges.map(n=>`
     <div class="nudge t${n.tier}">
       <div class="nh"><span class="nicon">💡</span>Did you know${n.tier===1?' · priority':''}</div>
@@ -803,7 +812,11 @@ function renderAssump(){
     [['Working days per year','workingDays',1],['Display range spread (±%)','rangeSpread',1],['Overlay — R capturable @D5 (%)','dBlocked.R',1],['Overlay — F capturable @D5 (%)','dBlocked.F',1],['Overlay — I capturable @D5 (%)','dBlocked.I',1],['Overlay — T capturable @D5 (%)','dBlocked.T',1],['Overlay — S capturable @D5 (%)','dBlocked.S',1]]));
   rows.push(`<div class="assump-actions"><button class="ghost-btn" id="assump-reset-all">Reset all assumptions</button></div>`);
   body.innerHTML=rows.join('');
-  body.querySelectorAll('[data-apath]').forEach(inp=>inp.onchange=()=>{const v=parseFloat(inp.value);if(!isNaN(v)){setPath(inp.dataset.apath,v);refresh(true);}});
+  body.querySelectorAll('[data-apath]').forEach(inp=>inp.onchange=()=>{let v=parseFloat(inp.value);if(!isNaN(v)){
+    // clamp: divisors must stay ≥1 (zero → NaN cascade), everything else ≥0
+    // (negative values would silently subtract from the capacity pool)
+    const p=inp.dataset.apath, min=(p==='workingDays'||p==='tracks')?1:0;
+    v=Math.max(min,v); setPath(p,v); refresh(true);}});
   body.querySelectorAll('[data-areset]').forEach(b=>b.onclick=()=>{setPath(b.dataset.areset,defOf(b.dataset.areset));refresh(true);});
   document.getElementById('assump-reset-all').onclick=()=>{S.A=freshAssumptions(S.stage);refresh(true);};
 }
